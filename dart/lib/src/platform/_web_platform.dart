@@ -1,9 +1,9 @@
-import 'dart:html' as html;
+import 'package:web/web.dart' as html;
 import 'platform.dart';
 
 const Platform instance = WebPlatform();
 
-/// [Platform] implementation that delegates to `dart:html`.
+/// [Platform] implementation that delegates to `package:web`.
 class WebPlatform extends Platform {
   /// Creates a new [Platform].
   const WebPlatform();
@@ -15,11 +15,11 @@ class WebPlatform extends Platform {
   String get operatingSystemVersion => 'unknown';
 
   @override
-  String get localHostname => html.window.location.hostname ?? 'unknown';
+  String get localHostname => html.window.location.hostname;
 
   String _browserPlatform() {
     final navigatorPlatform =
-        html.window.navigator.platform?.toLowerCase() ?? '';
+        html.window.navigator.platform.toLowerCase();
     if (navigatorPlatform.startsWith('mac')) {
       return 'macos';
     }

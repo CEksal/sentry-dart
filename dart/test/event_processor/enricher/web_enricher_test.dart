@@ -1,5 +1,5 @@
 @TestOn('browser')
-import 'dart:html' as html;
+import 'package:web/web.dart' as html;
 
 import 'package:sentry/sentry.dart';
 import 'package:sentry/src/event_processor/enricher/web_enricher_event_processor.dart';

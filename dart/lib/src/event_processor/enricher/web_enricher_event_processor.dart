@@ -1,7 +1,11 @@
-import 'dart:html' as html show window, Window;
+import 'package:web/web.dart' as html show window, Window, Navigator;
 
 import '../../../sentry.dart';
 import 'enricher_event_processor.dart';
+
+extension DeviceMemoryExtension on html.Navigator {
+  external num get deviceMemory;
+}
 
 EnricherEventProcessor enricherEventProcessor(SentryOptions options) {
   return WebEnricherEventProcessor(
@@ -60,9 +64,9 @@ class WebEnricherEventProcessor implements EnricherEventProcessor {
       memorySize: device?.memorySize ?? _getMemorySize(),
       orientation: device?.orientation ?? _getScreenOrientation(),
       screenHeightPixels: device?.screenHeightPixels ??
-          _window.screen?.available.height.toInt(),
+          _window.screen.availHeight.toInt(),
       screenWidthPixels:
-          device?.screenWidthPixels ?? _window.screen?.available.width.toInt(),
+          device?.screenWidthPixels ?? _window.screen.availWidth.toInt(),
       screenDensity:
           device?.screenDensity ?? _window.devicePixelRatio.toDouble(),
     );
@@ -70,22 +74,22 @@ class WebEnricherEventProcessor implements EnricherEventProcessor {
 
   int? _getMemorySize() {
     // https://developer.mozilla.org/en-US/docs/Web/API/Navigator/deviceMemory
-    final size = _window.navigator.deviceMemory?.toDouble();
-    final memoryByteSize = size != null ? size * 1024 * 1024 * 1024 : null;
-    return memoryByteSize?.toInt();
+    final size = _window.navigator.deviceMemory.toDouble();
+    final memoryByteSize = size * 1024 * 1024 * 1024;
+    return memoryByteSize.toInt();
   }
 
   SentryOrientation? _getScreenOrientation() {
     // https://developer.mozilla.org/en-US/docs/Web/API/ScreenOrientation
-    final screenOrientation = _window.screen?.orientation;
-    if (screenOrientation != null) {
-      if (screenOrientation.type?.startsWith('portrait') ?? false) {
+    final screenOrientation = _window.screen.orientation;
+    // if (screenOrientation != null) {
+      if (screenOrientation.type.startsWith('portrait')) {
         return SentryOrientation.portrait;
       }
-      if (screenOrientation.type?.startsWith('landscape') ?? false) {
+      if (screenOrientation.type.startsWith('landscape')) {
         return SentryOrientation.landscape;
       }
-    }
+    // }
     return null;
   }
 

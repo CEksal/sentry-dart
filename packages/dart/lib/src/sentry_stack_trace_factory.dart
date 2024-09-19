@@ -128,7 +128,7 @@ class SentryStackTraceFactory {
     final platform = _options.platform.isWeb ? 'javascript' : 'dart';
     final fileName =
         frame.uri.pathSegments.isNotEmpty ? frame.uri.pathSegments.last : null;
-    final abs = '$eventOrigin${_absolutePathForCrashReport(frame)}';
+    final abs = _absolutePathForCrashReport(frame);
 
     final includeModule =
         frame.package != null && _options.includeModuleInStackTrace;
@@ -171,6 +171,7 @@ class SentryStackTraceFactory {
   String _absolutePathForCrashReport(Frame frame) {
     if (frame.uri.scheme != 'dart' &&
         frame.uri.scheme != 'package' &&
+        !frame.uri.scheme.startsWith('http') &&
         frame.uri.pathSegments.isNotEmpty) {
       return frame.uri.pathSegments.last;
     }

@@ -70,6 +70,12 @@ public final class SentryFlutter {
         if let appHangTimeoutIntervalMillis = data["appHangTimeoutIntervalMillis"] as? NSNumber {
             options.appHangTimeoutInterval = appHangTimeoutIntervalMillis.doubleValue / 1000
         }
+        if let spotlightUrl = data["spotlightUrl"] as? String {
+            options.spotlightUrl = spotlightUrl
+        }
+        if let enableSpotlight = data["enableSpotlight"] as? Bool {
+            options.enableSpotlight = enableSpotlight
+        }
         if let proxy = data["proxy"] as? [String: Any] {
             guard let host = proxy["host"] as? String,
                   let port = proxy["port"] as? Int,
@@ -111,6 +117,13 @@ public final class SentryFlutter {
                 (replayOptions["sessionSampleRate"] as? NSNumber)?.floatValue ?? 0
             options.experimental.sessionReplay.onErrorSampleRate =
                 (replayOptions["onErrorSampleRate"] as? NSNumber)?.floatValue ?? 0
+
+            // TMP: this doesn't actually mask, just ensures we show the correct
+            // value in tags. https://github.com/getsentry/sentry-cocoa/issues/4666
+            options.experimental.sessionReplay.maskAllText =
+                (replayOptions["maskAllText"] as? Bool) ?? false
+            options.experimental.sessionReplay.maskAllImages =
+                (replayOptions["maskAllImages"] as? Bool) ?? false
         }
 #endif
     }

@@ -81,6 +81,12 @@ class SentryFlutter(
     data.getIfNotNull<String>("proguardUuid") {
       options.proguardUuid = it
     }
+    data.getIfNotNull<Boolean>("enableSpotlight") {
+      options.isEnableSpotlight = it
+    }
+    data.getIfNotNull<String>("spotlightUrl") {
+      options.spotlightConnectionUrl = it
+    }
 
     val nativeCrashHandling = (data["enableNativeCrashHandling"] as? Boolean) ?: true
     // nativeCrashHandling has priority over anrEnabled
@@ -158,7 +164,12 @@ class SentryFlutter(
     data: Map<String, Any>,
   ) {
     options.sessionSampleRate = data["sessionSampleRate"] as? Double
-    options.errorSampleRate = data["onErrorSampleRate"] as? Double
+    options.onErrorSampleRate = data["onErrorSampleRate"] as? Double
+
+    // Disable native tracking of orientation change (causes replay restart)
+    // because we don't have the new size from Flutter yet. Instead, we'll
+    // trigger onConfigurationChanged() manually in setReplayConfig().
+    options.setTrackOrientationChange(false)
   }
 }
 

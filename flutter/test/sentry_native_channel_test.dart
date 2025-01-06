@@ -12,6 +12,7 @@ import 'package:sentry_flutter/src/native/factory.dart';
 import 'package:sentry_flutter/src/native/method_channel_helper.dart';
 import 'package:sentry_flutter/src/native/sentry_native_binding.dart';
 import 'package:sentry/src/platform/platform.dart' as platform;
+import 'package:sentry_flutter/src/replay/replay_config.dart';
 import 'mocks.dart';
 import 'mocks.mocks.dart';
 import 'sentry_flutter_test.dart';
@@ -50,6 +51,21 @@ void main() {
 
         expect(actual?.appStartTime, 0.1);
         expect(actual?.isColdStart, true);
+      });
+
+      test('invalid fetchNativeAppStart returns null', () async {
+        when(channel.invokeMethod('fetchNativeAppStart'))
+            .thenAnswer((_) async => {
+                  'pluginRegistrationTime': 'invalid',
+                  'appStartTime': 'invalid',
+                  'isColdStart': 'invalid',
+                  // ignore: inference_failure_on_collection_literal
+                  'nativeSpanTimes': 'invalid',
+                });
+
+        final actual = await sut.fetchNativeAppStart();
+
+        expect(actual, isNull);
       });
 
       test('beginNativeFrames', () async {
@@ -276,10 +292,10 @@ void main() {
           }
         ];
 
-        when(channel.invokeMethod('loadImageList'))
+        when(channel.invokeMethod('loadImageList', any))
             .thenAnswer((invocation) async => json);
 
-        final data = await sut.loadDebugImages();
+        final data = await sut.loadDebugImages(SentryStackTrace(frames: []));
 
         expect(data?.map((v) => v.toJson()), json);
       });
@@ -309,6 +325,38 @@ void main() {
         await sut.nativeCrash();
 
         verify(channel.invokeMethod('nativeCrash'));
+      });
+
+      test('setReplayConfig', () async {
+        when(channel.invokeMethod('setReplayConfig', any))
+            .thenAnswer((_) => Future.value());
+
+        final config =
+            ReplayConfig(width: 1.1, height: 2.2, frameRate: 3, bitRate: 4);
+        await sut.setReplayConfig(config);
+
+        if (mockPlatform.isAndroid) {
+          verify(channel.invokeMethod('setReplayConfig', {
+            'width': config.width,
+            'height': config.height,
+            'frameRate': config.frameRate,
+            'bitRate': config.bitRate,
+          }));
+        } else {
+          verifyNever(channel.invokeMethod('setReplayConfig', any));
+        }
+      });
+
+      test('captureReplay', () async {
+        final sentryId = SentryId.newId();
+
+        when(channel.invokeMethod('captureReplay', any))
+            .thenAnswer((_) => Future.value(sentryId.toString()));
+
+        final returnedId = await sut.captureReplay(true);
+
+        verify(channel.invokeMethod('captureReplay', {'isCrash': true}));
+        expect(returnedId, sentryId);
       });
     });
   }

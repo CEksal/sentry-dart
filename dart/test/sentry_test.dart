@@ -46,6 +46,15 @@ void main() {
       expect(client.captureEventCalls.first.scope, isNotNull);
     });
 
+    test('should capture the feedback event', () async {
+      final fakeFeedback = SentryFeedback(message: 'message');
+      await Sentry.captureFeedback(fakeFeedback);
+
+      expect(client.captureFeedbackCalls.length, 1);
+      expect(client.captureFeedbackCalls.first.feedback, fakeFeedback);
+      expect(client.captureFeedbackCalls.first.scope, isNotNull);
+    });
+
     test('should capture the event withScope', () async {
       await Sentry.captureEvent(
         fakeEvent,
@@ -57,6 +66,19 @@ void main() {
       expect(client.captureEventCalls.length, 1);
       expect(client.captureEventCalls.first.event, fakeEvent);
       expect(client.captureEventCalls.first.scope?.user?.id, 'foo bar');
+    });
+
+    test('should capture the feedback event withScope', () async {
+      final fakeFeedback = SentryFeedback(message: 'message');
+      await Sentry.captureFeedback(
+        fakeFeedback,
+        withScope: (scope) {
+          scope.setUser(SentryUser(id: 'foo bar'));
+        },
+      );
+
+      expect(client.captureFeedbackCalls.length, 1);
+      expect(client.captureFeedbackCalls.first.scope?.user?.id, 'foo bar');
     });
 
     test('should not capture a null exception', () async {
@@ -130,10 +152,6 @@ void main() {
       Sentry.startTransaction('name', 'op');
 
       expect(Sentry.getSpan(), isNull);
-    });
-
-    test('should provide metrics API', () async {
-      expect(Sentry.metrics(), Sentry.currentHub.metricsApi);
     });
   });
 
@@ -432,6 +450,10 @@ void main() {
   group('Sentry init optionsConfiguration', () {
     final fixture = Fixture();
 
+    tearDown(() async {
+      await Sentry.close();
+    });
+
     test('throw is handled and logged', () async {
       final sentryOptions = defaultTestOptions()
         ..automatedTestMode = false
@@ -448,6 +470,28 @@ void main() {
 
       expect(fixture.loggedException, exception);
       expect(fixture.loggedLevel, SentryLevel.error);
+    });
+  });
+
+  group('Sentry runZonedGuarded', () {
+    test('calling runZonedGuarded before init does not throw', () async {
+      await Sentry.close();
+
+      var expected = Exception("run zoned guarded exception");
+      Object? actual;
+
+      final completer = Completer<void>();
+      Sentry.runZonedGuarded(() {
+        throw expected;
+      }, (error, stackTrace) {
+        actual = error;
+        completer.complete();
+      });
+
+      await completer.future;
+
+      expect(actual, isNotNull);
+      expect(actual, expected);
     });
   });
 }

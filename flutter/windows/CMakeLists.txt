@@ -4,14 +4,16 @@
 # customers of the plugin.
 cmake_minimum_required(VERSION 3.14)
 
-# Project-level configuration.
-set(PROJECT_NAME "sentry_flutter")
-project(${PROJECT_NAME} LANGUAGES CXX)
+if(FLUTTER_TARGET_PLATFORM EQUAL "windows-arm64")
+    set(native_backend "breakpad")
+else()
+    set(native_backend "crashpad")
+endif()
 
-# List of absolute paths to libraries that should be bundled with the plugin.
-# This list could contain prebuilt libraries, or libraries created by an
-# external build triggered from this build file.
-set(sentry_flutter_bundled_libraries
-  ""
-  PARENT_SCOPE
-)
+set(SENTRY_BACKEND ${native_backend} CACHE STRING "The sentry backend responsible for reporting crashes" FORCE)
+
+include("${CMAKE_CURRENT_SOURCE_DIR}/../sentry-native/sentry-native.cmake")
+
+# Even though sentry_flutter doesn't actually provide a useful plugin, we need to accommodate the Flutter tooling.
+# sentry_flutter/sentry_flutter_plugin.h is included by the flutter-tool generated plugin registrar:
+target_include_directories(sentry INTERFACE ${CMAKE_CURRENT_LIST_DIR})

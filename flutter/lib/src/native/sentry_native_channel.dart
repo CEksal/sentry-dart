@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:meta/meta.dart';
 
 import '../../sentry_flutter.dart';
+import '../replay/replay_config.dart';
 import 'native_app_start.dart';
 import 'native_frames.dart';
 import 'method_channel_helper.dart';
@@ -70,7 +71,13 @@ class SentryNativeChannel
       'replay': <String, dynamic>{
         'sessionSampleRate': options.experimental.replay.sessionSampleRate,
         'onErrorSampleRate': options.experimental.replay.onErrorSampleRate,
+        // TMP: this doesn't actually mask, just ensures we show the correct
+        // value in tags. https://github.com/getsentry/sentry-cocoa/issues/4666
+        'maskAllText': options.experimental.privacyForReplay.maskAllText,
+        'maskAllImages': options.experimental.privacyForReplay.maskAllImages,
       },
+      'enableSpotlight': options.spotlight.enabled,
+      'spotlightUrl': options.spotlight.url,
     });
   }
 
@@ -85,11 +92,17 @@ class SentryNativeChannel
   }
 
   @override
+  bool get supportsCaptureEnvelope => true;
+
+  @override
   Future<void> captureEnvelope(
       Uint8List envelopeData, bool containsUnhandledException) {
     return channel.invokeMethod(
         'captureEnvelope', [envelopeData, containsUnhandledException]);
   }
+
+  @override
+  bool get supportsLoadContexts => true;
 
   @override
   Future<Map<String, dynamic>?> loadContexts() =>
@@ -176,10 +189,17 @@ class SentryNativeChannel
       });
 
   @override
-  Future<List<DebugImage>?> loadDebugImages() =>
+  Future<List<DebugImage>?> loadDebugImages(SentryStackTrace stackTrace) =>
       tryCatchAsync('loadDebugImages', () async {
-        final images = await channel
-            .invokeListMethod<Map<dynamic, dynamic>>('loadImageList');
+        Set<String> instructionAddresses = {};
+        for (final frame in stackTrace.frames) {
+          if (frame.instructionAddr != null) {
+            instructionAddresses.add(frame.instructionAddr!);
+          }
+        }
+
+        final images = await channel.invokeListMethod<Map<dynamic, dynamic>>(
+            'loadImageList', instructionAddresses.toList());
         return images
             ?.map((e) => e.cast<String, dynamic>())
             .map(DebugImage.fromJson)
@@ -200,6 +220,18 @@ class SentryNativeChannel
 
   @override
   Future<void> nativeCrash() => channel.invokeMethod('nativeCrash');
+
+  @override
+  bool get supportsReplay => false;
+
+  @override
+  FutureOr<void> setReplayConfig(ReplayConfig config) =>
+      channel.invokeMethod('setReplayConfig', {
+        'width': config.width,
+        'height': config.height,
+        'frameRate': config.frameRate,
+        'bitRate': config.bitRate,
+      });
 
   @override
   Future<SentryId> captureReplay(bool isCrash) =>

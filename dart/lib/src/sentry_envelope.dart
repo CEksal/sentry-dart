@@ -1,15 +1,16 @@
 import 'dart:convert';
+
 import 'client_reports/client_report.dart';
 import 'metrics/metric.dart';
 import 'protocol.dart';
-import 'sentry_item_type.dart';
-import 'sentry_options.dart';
-import 'sentry_trace_context_header.dart';
-import 'utils.dart';
 import 'sentry_attachment/sentry_attachment.dart';
 import 'sentry_envelope_header.dart';
 import 'sentry_envelope_item.dart';
+import 'sentry_item_type.dart';
+import 'sentry_options.dart';
+import 'sentry_trace_context_header.dart';
 import 'sentry_user_feedback.dart';
+import 'utils.dart';
 
 /// Class representation of `Envelope` file.
 class SentryEnvelope {
@@ -59,6 +60,7 @@ class SentryEnvelope {
     );
   }
 
+  @Deprecated('Will be removed in a future version.')
   factory SentryEnvelope.fromUserFeedback(
     SentryUserFeedback feedback,
     SdkVersion sdkVersion, {
@@ -120,23 +122,27 @@ class SentryEnvelope {
 
     final newLineData = utf8.encode('\n');
     for (final item in items) {
-      final length = await item.header.length();
-      // A length smaller than 0 indicates an invalid envelope, which should not
-      // be send to Sentry.io
-      if (length < 0) {
-        continue;
-      }
-      // Only attachments should be filtered according to
-      // SentryOptions.maxAttachmentSize
-      if (item.header.type == SentryItemType.attachment) {
-        if (await item.header.length() > options.maxAttachmentSize) {
+      try {
+        final dataFuture = item.dataFactory();
+        final data = dataFuture is Future ? await dataFuture : dataFuture;
+
+        // Only attachments should be filtered according to
+        // SentryOptions.maxAttachmentSize
+        if (item.header.type == SentryItemType.attachment &&
+            data.length > options.maxAttachmentSize) {
           continue;
         }
-      }
-      final itemStream = await item.envelopeItemStream();
-      if (itemStream.isNotEmpty) {
+
         yield newLineData;
-        yield itemStream;
+        yield utf8JsonEncoder.convert(await item.header.toJson(data.length));
+        yield newLineData;
+        yield data;
+      } catch (_) {
+        if (options.automatedTestMode) {
+          rethrow;
+        }
+        // Skip throwing envelope item data closure.
+        continue;
       }
     }
   }

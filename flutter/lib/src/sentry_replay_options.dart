@@ -1,6 +1,7 @@
 import 'package:meta/meta.dart';
 
 /// Configuration of the experimental replay feature.
+@experimental
 class SentryReplayOptions {
   double? _sessionSampleRate;
 
@@ -23,16 +24,6 @@ class SentryReplayOptions {
     assert(value == null || (value >= 0 && value <= 1));
     _onErrorSampleRate = value;
   }
-
-  /// Redact all text content. Draws a rectangle of text bounds with text color
-  /// on top. Currently, only [Text] and [EditableText] Widgets are redacted.
-  /// Default is enabled.
-  var redactAllText = true;
-
-  /// Redact all image content. Draws a rectangle of image bounds with image's
-  /// dominant color on top. Currently, only [Image] widgets are redacted.
-  /// Default is enabled.
-  var redactAllImages = true;
 
   @internal
   bool get isEnabled =>
